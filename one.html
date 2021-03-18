@@ -1,0 +1,210 @@
+<html>
+<head>
+	<title>the red bawl</title>
+	<style>
+		canvas {
+			position: absolute;
+			top: 0px;
+			left: 0px;
+		}
+	</style>
+</head>
+<body>
+<script>
+
+class Part {
+
+	constructor(x, y, r, vx, vy, rr, gg, bb) {
+		this.x = x;
+		this.y = y;
+		this.r = r;
+	
+		this.vx = vx;
+		this.vy = vy;
+
+		this.rr = rr;
+		this.gg = gg;
+		this.bb = bb;
+	
+		this.lastX = this.x;
+		this.lastY = this.y;
+		this.dx = 0;
+		this.dy = 0;
+
+		this.bounceConstant = this.r / 80;
+		this.frictionConstant = this.bounceConstant / 7;
+	}
+
+	fall() {
+		this.vy += 1;
+	}
+
+	moveX() {
+		this.x += this.vx;
+		
+		if (this.vx < 0) {
+			if (this.x - this.r < 0) {
+				this.vx *= -this.bounceConstant;
+				this.x = this.r;
+			}
+		}
+		if (this.vx > 0) {
+			if (this.x + this.r > innerWidth) {
+				this.vx *= -this.bounceConstant;
+				this.x = innerWidth - this.r;
+			}
+		}
+	}
+
+	moveY() {
+		this.y += this.vy;
+		
+		if (this.vy < 0) {
+			if (this.y - this.r < 0) {
+				this.vy *= -this.bounceConstant;
+				this.y = this.r;
+			}
+		}
+		if (this.vy > 0) {
+			if (this.y + this.r > innerHeight) {
+				this.vy *= -this.bounceConstant;
+				this.y = innerHeight - this.r;
+			}
+		}
+	}
+
+	applyFriction() {
+		if (this.y == innerHeight - this.r) {
+			if (this.vx < 0) {
+				this.vx += this.frictionConstant;
+				if (this.vx > 0) this.vx = 0;
+			}
+			if (this.vx > 0) {
+				this.vx -= this.frictionConstant;
+				if (this.vx < 0) this.vx = 0;
+			}
+		}
+	}
+
+	calculateChange() {
+		this.dx = this.x - this.lastX;
+		this.dy = this.y - this.lastY;
+		this.lastX = this.x;
+		this.lastY = this.y;
+	}
+
+	tick(rat, keys) {
+		this.fall();
+		this.moveX();
+		this.moveY();
+		this.applyFriction();
+		this.calculateChange();
+	}
+
+	draw(ctx) {
+		ctx.fillStyle = `rgb(${this.rr}, ${this.gg}, ${this.bb})`;
+		ctx.beginPath();
+		ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+		ctx.fill();
+	}
+}
+
+class PartHandler {
+
+	constructor() {
+		this.parts = [];
+		this.selectedPart = null;
+	}
+
+	add(part) {
+		this.parts.push(part);
+	}
+
+	mousedown(rat) {
+		for (let i = this.parts.length - 1; i >= 0; --i) {
+			const p = this.parts[i];
+			const xx = p.x - rat.x;
+			const yy = p.y - rat.y;
+			if (xx * xx + yy * yy < p.r * p.r) {
+				this.selectedPart = p;
+			}
+		}
+	}
+
+	mouseup(rat) {
+		if (this.selectedPart) {
+			this.selectedPart.vx = this.selectedPart.dx;
+			this.selectedPart.vy = this.selectedPart.dy;
+		}
+		this.selectedPart = null;
+	}
+
+	tick(rat, keys) {
+		this.parts.forEach(p => {
+			p.tick(rat, keys);
+		});
+
+		if (this.selectedPart) {
+			this.selectedPart.x = rat.x;
+			this.selectedPart.y = rat.y;
+		}
+	}
+
+	draw(ctx) {
+		this.parts.forEach(p => {
+			p.draw(ctx);
+		});
+	}
+}
+
+</script>
+<script>
+
+(function engine(){
+
+	// graphics
+	const canvas = document.createElement('canvas');
+	const c = canvas.getContext('2d');
+	canvas.width = innerWidth;
+	canvas.height = innerHeight;
+
+	// input
+	const mouse = {};
+	mouse.x = 0;
+	mouse.y = 0;
+
+	// working code
+	const partHandler = new PartHandler();
+	const randi = (min, max) => Math.floor(Math.random() * (max - min) + min + 1);
+	partHandler.add(new Part(
+		innerWidth / 2,
+		innerHeight / 2,
+		75,
+		0,
+		0,
+		255,
+		0,
+		0
+	));
+
+	// event handling
+	window.onload = () => document.body.append(canvas);
+	window.onresize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+	window.onmousemove = ({ x, y }) => { mouse.x = x; mouse.y = y; };
+	window.onmousedown = () => partHandler.mousedown(mouse);
+	window.onmouseup = () => partHandler.mouseup(mouse);
+
+	// loop
+	function loop() {
+		c.clearRect(0, 0, canvas.width, canvas.height);
+		partHandler.tick(mouse, null);
+		partHandler.draw(c);
+		requestAnimationFrame(loop);
+	}
+	loop();
+
+})();
+
+</script>
+</body>
+</html>
